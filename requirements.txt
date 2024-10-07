@@ -1,0 +1,5 @@
+pandas
+flet
+icecream
+fastapi
+requests

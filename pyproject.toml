@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "shitplit"
+version = "0.1.0"
+description = "Aplicación web para ajustar cuentas de barbacoas con la cuadri del parque"
+authors = ["sertemo"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flet = "^0.24.1"
+fastapi = "^0.115.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

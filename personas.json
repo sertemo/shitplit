@@ -1,0 +1,93 @@
+[
+    {
+      "nombre": "Jorge",
+      "pareja": "Naiara",
+      "hijos": ["Enare"]
+    },
+    {
+      "nombre": "Naiara",
+      "pareja": "Jorge",
+      "hijos": ["Enare"]
+    },
+    {
+      "nombre": "Eneko",
+      "pareja": "Idoia",
+      "hijos": ["Lier"]
+    },
+    {
+      "nombre": "Idoia",
+      "pareja": "Eneko",
+      "hijos": ["Lier"]
+    },
+    {
+      "nombre": "Sergio",
+      "pareja": "Leire",
+      "hijos": ["Inhar"]
+    },
+    {
+      "nombre": "Leire",
+      "pareja": "Sergio",
+      "hijos": ["Inhar"]
+    },
+    {
+      "nombre": "Bruno",
+      "pareja": "Oihane",
+      "hijos": ["Irati"]
+    },
+    {
+      "nombre": "Oihane",
+      "pareja": "Bruno",
+      "hijos": ["Irati"]
+    },
+    {
+      "nombre": "Estela",
+      "pareja": "Odei",
+      "hijos": ["Peio"]
+    },
+    {
+        "nombre": "Marta",
+        "pareja": "Andrés",
+        "hijos": ["Lucas"]
+      },
+      {
+        "nombre": "Andrés",
+        "pareja": "Marta",
+        "hijos": ["Lucas"]
+      },
+    {
+        "nombre": "Odei",
+        "pareja": "Estela",
+        "hijos": ["Peio"]
+      },
+    {
+        "nombre": "Jon",
+        "pareja": "Nora",
+        "hijos": ["Elaia", "Deba"]
+      },
+    {
+        "nombre": "Nora",
+        "pareja": "Jon",
+        "hijos": ["Elaia", "Deba"]
+      },
+    {
+        "nombre": "Marion",
+        "pareja": "Olivier",
+        "hijos": ["Mila", "Lucas"]
+      },
+    {
+        "nombre": "Olivier",
+        "pareja": "Mario",
+        "hijos": ["Mila", "Luca"]
+      },
+    {
+        "nombre": "Itzi",
+        "pareja": "Joseba",
+        "hijos": ["Aimar", "Aiala"]
+      },
+    {
+        "nombre": "Joseba",
+        "pareja": "Itzi",
+        "hijos": ["Aimar", "Aiala"]
+      }
+    
+  ]
