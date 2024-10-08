@@ -22,19 +22,21 @@ def load_cuadrilla() -> list[dict[str, Any]]:
 
 # Cargar la lista de barbacoas desde un archivo JSON
 def load_barbacoas() -> list[dict[str, Any]]:  # TODO De mongodb
-    if os.path.exists(settings.BARBACOAS_FILE):
-        with open(settings.BARBACOAS_FILE, "r") as f:
-            return json.load(f)
+    """
+    Carga todas las barbacoas de la base de datos MongoDB
+    """
     return []
 
 # Guardar la lista de barbacoas en un archivo JSON
-def save_barbacoa(barbacoa):  # TODO Meter en mongodb
-    barbacoas = load_barbacoas()
-    barbacoas.append(barbacoa)
-    with open(settings.BARBACOAS_FILE, "w") as f:
-        json.dump(barbacoas, f, indent=4)
+def save_barbacoa(barbacoa) -> None:
+    """
+    Envia a un endpoint del backend para que inserte en db
+    con todos los datos de la barbacoa
+    """
 
-# Flet Web App
+    
+
+
 def main(page: ft.Page):
     page.fonts = settings.APP_FONTS
     page.theme = ft.Theme(font_family="Poppins")
@@ -43,8 +45,7 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.session.cuadrilla = load_cuadrilla()
     page.session.colores = {persona['nombre']: persona['color'] for  persona in page.session.cuadrilla}
-
-    ic(page.session.cuadrilla)
+    page.session.barbacoas = load_barbacoas()
 
     # Contenedor para la tabla
     def update_expenses_table():
@@ -66,7 +67,7 @@ def main(page: ft.Page):
         page.update()
 
     # Botón para añadir el gasto
-    def add_expense(e):
+    def add_expense(e: ft.ControlEvent):
         persona = persona_field.value
         concepto = concepto_field.value
         try:
@@ -108,28 +109,38 @@ def main(page: ft.Page):
         page.update()
 
     # Botón para ajustar cuentas y crear gráficos
-    def calculate_balances(e):
-        ic("ENVIADO AL BACKEND")
+    def calculate_balances(e: ft.ControlEvent) -> None:
+        # Generamos el dict para enviar al backend
         gastos = [
             {"persona": row["Persona"], "concepto": row["Concepto"], "importe": row["Importe"]} 
             for index, row in page.session.expenses.iterrows()
             ]
         colores_dict = page.session.colores
-        ic(gastos)
-        if gastos:
+        # Calculamos el gasto total y el gasto medio
+        gasto_total = page.session.expenses["Importe"].sum()
+        gasto_medio = gasto_total / len(gastos) if len(gastos) > 0 else 0
+
+        if gastos and len(gastos) > 1 and gasto_total > 0.0:
             response = requests.post(f"{settings.BACKEND_URL}/calcular_ajustes", json=gastos)
             if response.status_code == 200:
                 ajustes: dict[str, Any] = response.json()["ajustes"]
                 ic(ajustes)
+                # Guardamos en sesión los ajustes
+                page.session.ajustes = ajustes
+
+                # Mostramos los resultados
                 ajustes_list = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
                 ajustes_list.controls.extend([ft.Row(
                     [ft.Text(ajuste["deudor"], color=colores_dict[ajuste["deudor"]], size=Sizes.LARGE), 
                     ft.Text("debe pagar a"), ft.Text(ajuste["acreedor"], color=colores_dict[ajuste["acreedor"]], size=Sizes.LARGE), 
-                    ft.Text(f"{ajuste['pago']:.2f} €")],
+                    ft.Text(f"{ajuste['pago']:.2f} €")], 
+                    alignment=ft.MainAxisAlignment.CENTER
                     ) for ajuste in ajustes])
+                ajustes_list.controls.append(ft.Divider())
+                ajustes_list.controls.append(ft.Text(f"Gasto Total: {gasto_total:.2f} €", size=Sizes.LARGE))
+                ajustes_list.controls.append(ft.Text(f"Gasto medio: {gasto_medio:.2f} €", size=Sizes.LARGE))
                 page.update()
 
-                ic(page.session.expenses)
                 personas = [row["Persona"] for index, row in page.session.expenses.iterrows() if row["Importe"] > 0]
                 pagos = page.session.expenses.groupby("Persona")["Importe"].sum().reindex(personas, fill_value=0)
                 ic(pagos)
@@ -137,7 +148,10 @@ def main(page: ft.Page):
                 # Crear gráficos
                 gastos_chart_data = [  # TODO SACAR EN OTRA FUNCIÓN
                     ft.PieChartSection(
-                        value=pagos[persona], title=persona, color=colores_dict[persona], title_style=ft.TextStyle(bgcolor=ft.colors.WHITE),
+                        value=pagos[persona], 
+                        title=f"{persona}\n{pagos[persona]:.2f} €", 
+                        color=colores_dict[persona], 
+                        title_style=ft.TextStyle(color=ft.colors.WHITE),
                         radius=160
                         ) for persona in personas
                     ]
@@ -159,16 +173,26 @@ def main(page: ft.Page):
 
     # Guardar barbacoa
     def save_current_barbacoa(e):
-        ajustes = calculate_balances(None)
-        if ajustes is None:
-            ajustes = []
+        # Validamos que hayan puesto un nombre de barbacoa
+        if not barbacoa_field.value:
+            show_snack_bar("Debes introducir un nombre de barbacoa.", "red")
+            return
+
+        # Armamos el objeto dict para enviar a db
         barbacoa = {
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "gastos": page.session.expenses.to_dict(orient="records"),
-            "ajustes": ajustes
+            "fecha": datetime.now().strftime("%Y-%m-%d"),
+            "nombre": barbacoa_field.value,
+            "ajustes": page.session.ajustes,
+            "gastos": page.session.expenses.to_dict(orient="records")
         }
-        save_barbacoa(barbacoa)
-        show_snack_bar("Barbacoa guardada correctamente.", "green")
+        ic("OBJETO BARBACOA PARA GUARDAR EN DB")
+        ic(barbacoa)
+        response = requests.post(settings.GUARDAR_BARBACOA_URL, json=barbacoa)
+        if response.status_code == 200:
+            show_snack_bar("Barbacoa guardada correctamente.", "green")
+        else:
+            msg = response.json().get("detail", "Error guardando la barbacoa.")
+            show_snack_bar(msg, "red")
 
     # Mostrar todas las barbacoas guardadas
     def display_saved_barbacoas():
@@ -206,7 +230,7 @@ def main(page: ft.Page):
     # Componentes de la página
     # Título principal
     titulo_ppal_container = ft.Container(
-        ft.Text("Añade gastos para nueva barbacoa", size=30, weight="bold"), 
+        ft.Text("Añade una nueva barbacoa", size=30, weight="bold"), 
         #bgcolor="blue", 
         padding=10)
 
@@ -216,12 +240,26 @@ def main(page: ft.Page):
     if not hasattr(page.session, "remaining_personas"):
         page.session.remaining_personas = [persona["nombre"] for persona in page.session.cuadrilla]
 
-    # Input de la persona
     INPUT_HEIGHT = 40
+    # Nombre de la barbacoa
+    barbacoa_field = ft.TextField(
+        label="Nombre de la barbacoa", 
+        width=400, 
+        border_radius=10,
+        height=INPUT_HEIGHT,
+        content_padding=ft.padding.symmetric(5, 8),
+        text_size=Sizes.XLARGE,
+        )
+    date_field = ft.DatePicker(  # TODO
+        value="Fecha",
+        current_date=datetime.now(),
+        )
+
+    # Input de la persona
     persona_field = ft.Dropdown(
-        label="Quien",
+        label="Persona",
         options=[ft.dropdown.Option(persona) for persona in page.session.remaining_personas],
-        width=300,
+        width=200,
         border_radius=ft.border_radius.all(10),
         height=INPUT_HEIGHT,
         content_padding=ft.padding.symmetric(5, 8)
@@ -229,7 +267,7 @@ def main(page: ft.Page):
     # Concepto de la compra
     concepto_field = ft.TextField(
         label="Concepto de gasto", 
-        width=300, 
+        width=persona_field.width, 
         border_radius=10,
         height=INPUT_HEIGHT,
         content_padding=persona_field.content_padding
@@ -237,7 +275,7 @@ def main(page: ft.Page):
     # Importe
     importe_field = ft.TextField(
         label="Importe", 
-        width=300, 
+        width=persona_field.width, 
         border_radius=10, 
         height=INPUT_HEIGHT,
         content_padding=persona_field.content_padding
@@ -251,9 +289,16 @@ def main(page: ft.Page):
         )
 
     input_container = ft.Container(
-        ft.Row(
-            [persona_field, concepto_field, importe_field, add_expense_button],
-            alignment=ft.MainAxisAlignment.CENTER
+        ft.Column(
+            [
+                ft.Row([barbacoa_field], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row(
+                    [persona_field, concepto_field, importe_field, add_expense_button],
+                    alignment=ft.MainAxisAlignment.CENTER
+                )
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=30
         ),
         #bgcolor="green",
         padding=10,
@@ -266,7 +311,7 @@ def main(page: ft.Page):
             ft.DataColumn(label=ft.Text("Importe", size=Sizes.LARGE, weight=ft.FontWeight.BOLD)),
             ft.DataColumn(label=ft.Text("Acciones", size=Sizes.LARGE, weight=ft.FontWeight.BOLD)),
         ],
-        rows=[]
+        rows=[],
     )
     update_expenses_table()
     calculate_button = ft.IconButton(
@@ -285,7 +330,7 @@ def main(page: ft.Page):
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             alignment=ft.MainAxisAlignment.CENTER,
         ),
-        width=500,
+        #width=600,
         #bgcolor=ft.colors.GREY_100,
         border=ft.border.all(width=1, color=ft.colors.GREY_300),
         padding=10,
@@ -318,7 +363,7 @@ def main(page: ft.Page):
         padding=20,
         border=expenses_table_container.border,
         border_radius=expenses_table_container.border_radius,
-        width=500,
+        width=420,
     )
     # Añadir los elementos al layout de la página
     saved_bbq_container = ft.Container(

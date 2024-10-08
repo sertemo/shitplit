@@ -1,8 +1,12 @@
-# backend.py
-from fastapi import FastAPI
+from typing import Any
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pandas as pd
 from icecream import ic
+
+from src.shitplit.backend.db.client import collection
+import shitplit.settings as settings
 
 app = FastAPI()
 
@@ -12,7 +16,14 @@ class Gasto(BaseModel):
     concepto: str
     importe: float
 
-@app.post("/calcular_ajustes")
+class BarbacoaMongo(BaseModel):
+    fecha: str
+    nombre: str
+    ajustes: list[dict[str, Any]]
+    gastos: list[dict[str, Any]]
+
+
+@app.post(settings.CALCULAR_AJUSTES_ENDPOINT)
 async def calcular_ajustes(gastos: list[Gasto]):
     ic("RECIBIDO POR EL BACKEND")
     ic(gastos)
@@ -46,3 +57,16 @@ async def calcular_ajustes(gastos: list[Gasto]):
                 del acreedores[acreedor]
 
     return {"ajustes": ajustes}
+
+
+@app.post(settings.GUARDAR_BARBACOA_ENDPOINT)
+async def guardar_barbacoa(barbacoa: BarbacoaMongo):
+    # TODO Validar para no poder guardar 2 veces la misma BBQ
+    # TODO Discriminar por nombre y fecha ?
+    barbacoa_dict = barbacoa.model_dump()
+    ic("METEMOS EN DB")
+    ic(barbacoa_dict)
+    try:
+        collection.insert_one(barbacoa_dict)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
