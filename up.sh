@@ -2,4 +2,4 @@
 
 docker rm shitplit && docker rmi shitplit
 docker build -t shitplit . && \
-docker run -p 8501:8501 --name shitplit shitplit:latest
+docker run -p 60751:60751 --name shitplit shitplit:latest

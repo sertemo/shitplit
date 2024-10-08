@@ -1,0 +1,110 @@
+[
+  {
+      "nombre": "Jorge",
+      "pareja": "Naiara",
+      "hijos": ["Enare"],
+      "color": "#702d12"
+  },
+  {
+      "nombre": "Naiara",
+      "pareja": "Jorge",
+      "hijos": ["Enare"],
+      "color": "#70358f"
+  },
+  {
+      "nombre": "Eneko",
+      "pareja": "Idoia",
+      "hijos": ["Lier"],
+      "color": "#659861"
+  },
+  {
+      "nombre": "Idoia",
+      "pareja": "Eneko",
+      "hijos": ["Lier"],
+      "color": "#543ed5"
+  },
+  {
+      "nombre": "Sergio",
+      "pareja": "Leire",
+      "hijos": ["Inhar"],
+      "color": "#fc2f7b"
+  },
+  {
+      "nombre": "Leire",
+      "pareja": "Sergio",
+      "hijos": ["Inhar"],
+      "color": "#dd2bc3"
+  },
+  {
+      "nombre": "Bruno",
+      "pareja": "Oihane",
+      "hijos": ["Irati"],
+      "color": "#6d9c2a"
+  },
+  {
+      "nombre": "Oihane",
+      "pareja": "Bruno",
+      "hijos": ["Irati"],
+      "color": "#ba6646"
+  },
+  {
+      "nombre": "Estela",
+      "pareja": "Odei",
+      "hijos": ["Peio"],
+      "color": "#75e5e9"
+  },
+  {
+      "nombre": "Marta",
+      "pareja": "Andrés",
+      "hijos": ["Lucas"],
+      "color": "#17d099"
+  },
+  {
+      "nombre": "Andrés",
+      "pareja": "Marta",
+      "hijos": ["Lucas"],
+      "color": "#4a64ce"
+  },
+  {
+      "nombre": "Odei",
+      "pareja": "Estela",
+      "hijos": ["Peio"],
+      "color": "#ed6505"
+  },
+  {
+      "nombre": "Jon",
+      "pareja": "Nora",
+      "hijos": ["Elaia", "Deba"],
+      "color": "#7d0926"
+  },
+  {
+      "nombre": "Nora",
+      "pareja": "Jon",
+      "hijos": ["Elaia", "Deba"],
+      "color": "#2b456f"
+  },
+  {
+      "nombre": "Marion",
+      "pareja": "Olivier",
+      "hijos": ["Mila", "Lucas"],
+      "color": "#83e183"
+  },
+  {
+      "nombre": "Olivier",
+      "pareja": "Mario",
+      "hijos": ["Mila", "Luca"],
+      "color": "#2fa0c1"
+  },
+  {
+      "nombre": "Itzi",
+      "pareja": "Joseba",
+      "hijos": ["Aimar", "Aiala"],
+      "color": "#14650e"
+  },
+  {
+      "nombre": "Joseba",
+      "pareja": "Itzi",
+      "hijos": ["Aimar", "Aiala"],
+      "color": "#aedd98"
+  }
+]
