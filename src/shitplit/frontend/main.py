@@ -20,21 +20,24 @@ def load_cuadrilla() -> list[dict[str, Any]]:
     else:
         return []
 
-# Cargar la lista de barbacoas desde un archivo JSON
-def load_barbacoas() -> list[dict[str, Any]]:  # TODO De mongodb
+# Cargar la lista de barbacoas desde base de datos
+def load_barbacoas() -> list[dict[str, Any]]:
     """
-    Carga todas las barbacoas de la base de datos MongoDB
+    Carga todas las barbacoas de la base de datos MongoDB.
+    Llama a la API
     """
-    return []
+    data: list[dict[str, Any]] = requests.get(settings.OBTENER_BARBACOAS_GUARDADAS_URL).json()
+    return data
 
-# Guardar la lista de barbacoas en un archivo JSON
-def save_barbacoa(barbacoa) -> None:
-    """
-    Envia a un endpoint del backend para que inserte en db
-    con todos los datos de la barbacoa
-    """
 
-    
+# Eliminar una barbacoa de base de datos
+def delete_barbacoa(barbacoa_nombre: str) -> None:
+    """
+    Elimina una barbacoa de la base de datos MongoDB.
+    Llama a la API
+    """
+    response = requests.delete(settings.ELIMINAR_BARBACOA_URL, json={"nombre": barbacoa_nombre})
+    return response.status_code
 
 
 def main(page: ft.Page):
@@ -46,6 +49,8 @@ def main(page: ft.Page):
     page.session.cuadrilla = load_cuadrilla()
     page.session.colores = {persona['nombre']: persona['color'] for  persona in page.session.cuadrilla}
     page.session.barbacoas = load_barbacoas()
+
+    listview_bbq_container = ft.Container(width=420)
 
     # Contenedor para la tabla
     def update_expenses_table():
@@ -108,17 +113,45 @@ def main(page: ft.Page):
         update_expenses_table()
         page.update()
 
+
+    # Funcion para crear el grafico de tarta
+    def create_pie_chart(gastos: list[dict[str, Any]], colores_dict: dict[str, str]) -> ft.PieChart:
+        # Filtramos gastos con personas que tengan un importe mayor que cero
+        personas_pago = [gasto for gasto in gastos if gasto["Importe"] > 0]
+
+        gastos_chart_data = [
+            ft.PieChartSection(
+                value=persona["Importe"], 
+                title=f"{persona['Persona']}\n{persona['Importe']:.2f} €", 
+                color=colores_dict[persona['Persona']], 
+                title_style=ft.TextStyle(color=ft.colors.WHITE),
+                radius=160
+                ) for persona in personas_pago
+            ]
+        gastos_chart = ft.PieChart(
+            sections=gastos_chart_data, 
+            width=400, 
+            height=400, 
+            center_space_radius=0,
+            expand=True
+            )
+        
+        return gastos_chart
+
     # Botón para ajustar cuentas y crear gráficos
     def calculate_balances(e: ft.ControlEvent) -> None:
         # Generamos el dict para enviar al backend
         gastos = [
-            {"persona": row["Persona"], "concepto": row["Concepto"], "importe": row["Importe"]} 
+            {"Persona": row["Persona"], "Concepto": row["Concepto"], "Importe": row["Importe"]} 
             for index, row in page.session.expenses.iterrows()
             ]
         colores_dict = page.session.colores
-        # Calculamos el gasto total y el gasto medio
+        # Calculamos el gasto total y el gasto medio y guardamos en sesión
         gasto_total = page.session.expenses["Importe"].sum()
         gasto_medio = gasto_total / len(gastos) if len(gastos) > 0 else 0
+
+        page.session.gasto_total = gasto_total
+        page.session.gasto_medio = gasto_medio
 
         if gastos and len(gastos) > 1 and gasto_total > 0.0:
             response = requests.post(f"{settings.BACKEND_URL}/calcular_ajustes", json=gastos)
@@ -139,29 +172,9 @@ def main(page: ft.Page):
                 ajustes_list.controls.append(ft.Divider())
                 ajustes_list.controls.append(ft.Text(f"Gasto Total: {gasto_total:.2f} €", size=Sizes.LARGE))
                 ajustes_list.controls.append(ft.Text(f"Gasto medio: {gasto_medio:.2f} €", size=Sizes.LARGE))
-                page.update()
 
-                personas = [row["Persona"] for index, row in page.session.expenses.iterrows() if row["Importe"] > 0]
-                pagos = page.session.expenses.groupby("Persona")["Importe"].sum().reindex(personas, fill_value=0)
-                ic(pagos)
-                ic(personas)
                 # Crear gráficos
-                gastos_chart_data = [  # TODO SACAR EN OTRA FUNCIÓN
-                    ft.PieChartSection(
-                        value=pagos[persona], 
-                        title=f"{persona}\n{pagos[persona]:.2f} €", 
-                        color=colores_dict[persona], 
-                        title_style=ft.TextStyle(color=ft.colors.WHITE),
-                        radius=160
-                        ) for persona in personas
-                    ]
-                gastos_chart = ft.PieChart(
-                    sections=gastos_chart_data, 
-                    width=400, 
-                    height=400, 
-                    center_space_radius=0,
-                    expand=True
-                    )
+                gastos_chart = create_pie_chart(gastos, colores_dict)
 
                 # Mostrar ajustes y gráficos
                 ajustes_section.controls.clear()
@@ -180,52 +193,102 @@ def main(page: ft.Page):
 
         # Armamos el objeto dict para enviar a db
         barbacoa = {
-            "fecha": datetime.now().strftime("%Y-%m-%d"),
+            "fecha": datetime.now().strftime("%d-%m-%Y"),
             "nombre": barbacoa_field.value,
             "ajustes": page.session.ajustes,
-            "gastos": page.session.expenses.to_dict(orient="records")
+            "gastos": page.session.expenses.to_dict(orient="records"),
+            "gasto_total": page.session.gasto_total,
+            "gasto_medio": page.session.gasto_medio
         }
         ic("OBJETO BARBACOA PARA GUARDAR EN DB")
         ic(barbacoa)
         response = requests.post(settings.GUARDAR_BARBACOA_URL, json=barbacoa)
         if response.status_code == 200:
+            display_saved_barbacoas()
             show_snack_bar("Barbacoa guardada correctamente.", "green")
         else:
             msg = response.json().get("detail", "Error guardando la barbacoa.")
             show_snack_bar(msg, "red")
 
+# Popup confirmación para borrar bbq
+    def confirm_delete(barbacoa_name):
+        def on_confirm(e):
+            status_code = delete_barbacoa(barbacoa_name)
+            if status_code == 200:
+                display_saved_barbacoas()
+                show_snack_bar(f"Barbacoa {barbacoa_name} eliminada.", "green")
+            else:
+                show_snack_bar(f"Error al borrar la barbacoa {barbacoa_name}.", "red")
+            
+            dialog.open = False
+            page.update()
+        
+        def on_cancel(e):
+            dialog.open = False
+            page.update()
+
+        dialog = ft.AlertDialog(
+            title=ft.Text("Confirmación"),
+            content=ft.Text(f"¿Estás seguro de que deseas eliminar la barbacoa '{barbacoa_name}'?"),
+            actions=[
+                ft.TextButton("Cancelar", on_click=on_cancel, icon_color=ft.colors.RED_700, icon=ft.icons.CLOSE),
+                ft.TextButton("Eliminar", on_click=on_confirm, icon_color=ft.colors.GREEN_700, icon=ft.icons.CONFIRMATION_NUM),
+            ]
+        )
+        page.overlay.append(dialog)
+        dialog.open = True
+        page.update()
+
+    # Mostrar ventana con detalles de la barbacoa
+    def display_barbacoa_details(barbacoa: dict[str, Any]):
+        def close_dialog(e):
+            dialog.open = False
+            page.update()
+
+        dialog = ft.AlertDialog(
+            title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'"),
+            content=ft.Column([
+                ft.Text(f"Gasto total: {barbacoa['gasto_total']:.2f} €"),
+                ft.Text(f"Gasto medio: {barbacoa['gasto_medio']:.2f} €"),
+                create_pie_chart(barbacoa['gastos'], page.session.colores),
+                # TODO meter aqui ajustes
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            actions=[
+                ft.TextButton("Cerrar", on_click=close_dialog)
+                ],
+            actions_alignment=ft.MainAxisAlignment.END
+        )
+
+        page.overlay.append(dialog)
+        dialog.open = True
+        page.update()
+
     # Mostrar todas las barbacoas guardadas
     def display_saved_barbacoas():
-        barbacoas = load_barbacoas()
-        ic(barbacoas)
-        for idx, barbacoa in enumerate(barbacoas):
-            barbacoa_text = ft.Text(f"Barbacoa {idx + 1} - Fecha: {barbacoa['fecha']}")
-            gastos_df = pd.DataFrame(barbacoa['gastos'])
-            gastos_table = ft.DataTable(
-                columns=[
-                    ft.DataColumn(label=ft.Text("Persona")),
-                    ft.DataColumn(label=ft.Text("Concepto")),
-                    ft.DataColumn(label=ft.Text("Importe"))
-                ],
-                rows=[
-                    ft.DataRow(cells=[
-                        ft.DataCell(ft.Text(row["Persona"])),
-                        ft.DataCell(ft.Text(row["Concepto"])),
-                        ft.DataCell(ft.Text(f"{row['Importe']:.2f} €"))
-                    ]) for _, row in gastos_df.iterrows()
-                ]
+        barbacoas: list[dict[str, Any]] = load_barbacoas()
+        list_view = ft.ListView(expand=True, spacing=10)
+
+        for idx, barbacoa in enumerate(barbacoas, 1):
+            ic(barbacoa)
+            barbacoa_item = ft.Container(ft.Row([
+                ft.Row([ft.Text(f"{idx}"), ft.Text(barbacoa.get('nombre', 'Barbacoa sin nombre'), weight=ft.FontWeight.BOLD), ft.Text('-'),ft.Text(barbacoa['fecha'])]),
+                ft.IconButton(
+                    icon=ft.icons.DELETE,
+                    on_click=lambda e, barbacoa_name=barbacoa.get('nombre', 'Barbacoa'): confirm_delete(barbacoa_name),
+                    tooltip="Eliminar",
+                    icon_color=ft.colors.RED_700
+                )
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                border_radius=ft.border_radius.all(10),
+                padding=ft.padding.all(10),
+                bgcolor=ft.colors.GREY_100,
+                border=ft.border.all(1, ft.colors.GREY_300),
+                on_click=lambda e, barbacoa=barbacoa: display_barbacoa_details(barbacoa)
             )
-            ajustes = barbacoa.get('ajustes', [])
-            ic(ajustes)
-            ajustes_list = ft.Column([ft.Text(ajuste) for ajuste in ajustes])
-            return ft.Container(
-                ft.Column(
-                    [barbacoa_text, gastos_table, ajustes_list],
-                    alignment=ft.MainAxisAlignment.CENTER
-                    ), 
-                    bgcolor="blue",
-                    padding=10
-                    )
+            list_view.controls.append(barbacoa_item)
+        
+        listview_bbq_container.content = list_view
 
     # Componentes de la página
     # Título principal
@@ -314,6 +377,7 @@ def main(page: ft.Page):
         rows=[],
     )
     update_expenses_table()
+
     calculate_button = ft.IconButton(
         icon=ft.icons.CALCULATE,        
         tooltip="Ajustar Cuentas", 
@@ -365,10 +429,15 @@ def main(page: ft.Page):
         border_radius=expenses_table_container.border_radius,
         width=420,
     )
+    
+    display_saved_barbacoas()
     # Añadir los elementos al layout de la página
     saved_bbq_container = ft.Container(
         ft.Column(
-            [ft.Text("Barbacoas Guardadas", size=25, weight="bold")],
+            [
+                ft.Text("Barbacoas Guardadas", size=25, weight="bold"),
+                listview_bbq_container
+                ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             alignment=ft.MainAxisAlignment.CENTER
         ),
@@ -382,7 +451,7 @@ def main(page: ft.Page):
             ajustes_container,
             saved_bbq_container
         ],
-        spacing=20,
+        spacing=30,
         horizontal_alignment="center",
         )
     page.add(layout)
