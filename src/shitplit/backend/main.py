@@ -23,6 +23,7 @@ class BarbacoaMongo(BaseModel):
     gastos: list[dict[str, Any]]
     gasto_total: float
     gasto_medio: float
+    participantes: list[str]
 
 class BarbacoaDelete(BaseModel):
     nombre: str

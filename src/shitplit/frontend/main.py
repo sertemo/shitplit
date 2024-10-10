@@ -71,6 +71,7 @@ def main(page: ft.Page):
         ]
         page.update()
 
+
     # Botón para añadir el gasto
     def add_expense(e: ft.ControlEvent):
         persona = persona_field.value
@@ -95,12 +96,14 @@ def main(page: ft.Page):
         else:
             show_snack_bar("Debes añadir la persona", "red")
 
+
     # Mostrar mensajes de snack bar
     def show_snack_bar(message, color):
         snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
         page.overlay.append(snack_bar)
         snack_bar.open = True
         page.update()
+
 
     # Botón para eliminar un gasto
     def delete_expense(index):
@@ -116,6 +119,9 @@ def main(page: ft.Page):
 
     # Funcion para crear el grafico de tarta
     def create_pie_chart(gastos: list[dict[str, Any]], colores_dict: dict[str, str]) -> ft.PieChart:
+        """
+        Crea una gráfica de tarta con los gastos de una barbacoa.
+        """
         # Filtramos gastos con personas que tengan un importe mayor que cero
         personas_pago = [gasto for gasto in gastos if gasto["Importe"] > 0]
 
@@ -130,17 +136,33 @@ def main(page: ft.Page):
             ]
         gastos_chart = ft.PieChart(
             sections=gastos_chart_data, 
-            width=400, 
-            height=400, 
+            # width=400, 
+            # height=400, 
             center_space_radius=0,
-            expand=True
+            #expand=True
             )
         
         return gastos_chart
 
+
+    def create_ajustes(ajustes: list[dict[str, Any]], colores_dict: dict[str, str]) -> ft.Column:
+        """
+        Crea los ajustes de una barbacoa.
+        """
+        ajustes_list = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+        ajustes_list.controls.extend([ft.Row(
+            [ft.Text(ajuste["deudor"], color=colores_dict[ajuste["deudor"]], size=Sizes.LARGE), 
+            ft.Text("pagó a"), ft.Text(ajuste["acreedor"], color=colores_dict[ajuste["acreedor"]], size=Sizes.LARGE), 
+            ft.Text(f"{ajuste['pago']:.2f} €")], 
+            alignment=ft.MainAxisAlignment.CENTER
+            ) for ajuste in ajustes])
+
+        return ajustes_list
+
     # Botón para ajustar cuentas y crear gráficos
     def calculate_balances(e: ft.ControlEvent) -> None:
         # Generamos el dict para enviar al backend
+        ic(page.session.expenses.Persona.tolist())
         gastos = [
             {"Persona": row["Persona"], "Concepto": row["Concepto"], "Importe": row["Importe"]} 
             for index, row in page.session.expenses.iterrows()
@@ -162,7 +184,7 @@ def main(page: ft.Page):
                 page.session.ajustes = ajustes
 
                 # Mostramos los resultados
-                ajustes_list = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+                ajustes_list = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=10)
                 ajustes_list.controls.extend([ft.Row(
                     [ft.Text(ajuste["deudor"], color=colores_dict[ajuste["deudor"]], size=Sizes.LARGE), 
                     ft.Text("debe pagar a"), ft.Text(ajuste["acreedor"], color=colores_dict[ajuste["acreedor"]], size=Sizes.LARGE), 
@@ -178,7 +200,7 @@ def main(page: ft.Page):
 
                 # Mostrar ajustes y gráficos
                 ajustes_section.controls.clear()
-                ajustes_section.controls.extend([ajustes_list, gastos_chart])
+                ajustes_section.controls.extend([ajustes_list, ft.Divider(), gastos_chart])
                 save_button.disabled = False
                 page.update()
         else:
@@ -198,7 +220,8 @@ def main(page: ft.Page):
             "ajustes": page.session.ajustes,
             "gastos": page.session.expenses.to_dict(orient="records"),
             "gasto_total": page.session.gasto_total,
-            "gasto_medio": page.session.gasto_medio
+            "gasto_medio": page.session.gasto_medio,
+            "participantes": page.session.expenses.Persona.tolist()
         }
         ic("OBJETO BARBACOA PARA GUARDAR EN DB")
         ic(barbacoa)
@@ -231,8 +254,8 @@ def main(page: ft.Page):
             title=ft.Text("Confirmación"),
             content=ft.Text(f"¿Estás seguro de que deseas eliminar la barbacoa '{barbacoa_name}'?"),
             actions=[
+                ft.TextButton("Eliminar", on_click=on_confirm, icon_color=ft.colors.GREEN_700, icon=ft.icons.CHECK),
                 ft.TextButton("Cancelar", on_click=on_cancel, icon_color=ft.colors.RED_700, icon=ft.icons.CLOSE),
-                ft.TextButton("Eliminar", on_click=on_confirm, icon_color=ft.colors.GREEN_700, icon=ft.icons.CONFIRMATION_NUM),
             ]
         )
         page.overlay.append(dialog)
@@ -244,18 +267,32 @@ def main(page: ft.Page):
         def close_dialog(e):
             dialog.open = False
             page.update()
-
+        
+        ic("BARBACOA A MOSTRAR")
+        ic(barbacoa)
         dialog = ft.AlertDialog(
-            title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'"),
+            title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'", text_align=ft.TextAlign.CENTER),
             content=ft.Column([
-                ft.Text(f"Gasto total: {barbacoa['gasto_total']:.2f} €"),
-                ft.Text(f"Gasto medio: {barbacoa['gasto_medio']:.2f} €"),
+                ft.Text("Participantes", size=Sizes.XXLARGE, weight=ft.FontWeight.BOLD),
+                # TODO Añadir participantes y número
+                #ft.Text(f"{', '.join(barbacoa['participantes'])}"),
+                ft.Column(
+                    [
+                        ft.Text(f"Gasto total: {barbacoa['gasto_total']:.2f} €"),
+                        ft.Text(f"Gasto medio: {barbacoa['gasto_medio']:.2f} €"),   
+                    ]
+                ),                
+                ft.Divider(),
+                create_ajustes(barbacoa['ajustes'], page.session.colores),
+                ft.Divider(),
                 create_pie_chart(barbacoa['gastos'], page.session.colores),
-                # TODO meter aqui ajustes
             ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER, width=400,
+            spacing=20
+            ),
+
             actions=[
-                ft.TextButton("Cerrar", on_click=close_dialog)
+                ft.TextButton("Cerrar", on_click=close_dialog, icon=ft.icons.CLOSE, icon_color=ft.colors.RED_700),
                 ],
             actions_alignment=ft.MainAxisAlignment.END
         )
@@ -403,7 +440,7 @@ def main(page: ft.Page):
 
     
     # Contenedor para los ajustes
-    ajustes_section = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+    ajustes_section = ft.Column(horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=20)
     save_button = ft.IconButton(
         icon=ft.icons.SAVE, 
         tooltip="Guardar Barbacoa", 
@@ -421,7 +458,8 @@ def main(page: ft.Page):
                 save_button
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            alignment=ft.MainAxisAlignment.CENTER
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=40
         ),
         #bgcolor="green",
         padding=20,

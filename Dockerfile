@@ -1,22 +1,23 @@
 # Usa una imagen base de Python ligera
-FROM python:3.11-slim
+FROM python:3.11-slim AS generate-requirements
 
-# Establecer el directorio de trabajo
+# Instalamos poetry primero
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN apt-get purge -y --auto-remove curl && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY pyproject.toml poetry.lock ./
+RUN /root/.local/bin/poetry export --output requirements.txt
+
+# Instalamos las dependencias
+FROM python:3.11-slim AS production
 WORKDIR /app
 
-# Copiar solo los archivos necesarios para instalar dependencias (mejora el caché)
-COPY requirements.txt /app
+COPY --from=generate-requirements /requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Instalar dependencias del sistema y Python
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential && \
-    pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    apt-get remove -y build-essential && apt-get autoremove -y && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Copiar el resto de la aplicación
-COPY . /app
+# Copiar el resto del código de la aplicación
+COPY . .
 
 # Asegurar que el directorio /app esté en el PYTHONPATH
 ENV PYTHONPATH="/app"
