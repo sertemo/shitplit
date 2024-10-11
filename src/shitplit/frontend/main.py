@@ -1,6 +1,4 @@
 from datetime import datetime
-import json
-import os
 from typing import Any
 
 import flet as ft
@@ -12,13 +10,11 @@ from src.shitplit.frontend.styles import Sizes
 import src.shitplit.settings as settings
 
 
-def load_cuadrilla() -> list[dict[str, Any]]:
-    # Cargamos la cuadrilla desde el json
-    if os.path.exists(settings.PERSONAS_FILE):
-        with open(settings.PERSONAS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    else:
+def get_cuadrilla() -> list[dict[str, Any]]:
+    response = requests.get(settings.LOAD_CUADRILLA_URL)
+    if response.status_code != 200:
         return []
+    return response.json()
 
 # Cargar la lista de barbacoas desde base de datos
 def load_barbacoas() -> list[dict[str, Any]]:
@@ -45,8 +41,9 @@ def main(page: ft.Page):
     page.theme = ft.Theme(font_family="Poppins")
     page.title = "Ajustar gastos de barbacoas"
     page.padding = 20
+    page.favicon = "assets/favicon.ico"
     page.scroll = ft.ScrollMode.AUTO
-    page.session.cuadrilla = load_cuadrilla()
+    page.session.cuadrilla = get_cuadrilla()
     page.session.colores = {persona['nombre']: persona['color'] for  persona in page.session.cuadrilla}
     page.session.barbacoas = load_barbacoas()
 
@@ -125,12 +122,17 @@ def main(page: ft.Page):
         # Filtramos gastos con personas que tengan un importe mayor que cero
         personas_pago = [gasto for gasto in gastos if gasto["Importe"] > 0]
 
+        # Encontrar el valor máximo para calcular la posición dinámica
+        max_importe = max(gasto["Importe"] for gasto in personas_pago) if personas_pago else 1
+
         gastos_chart_data = [
             ft.PieChartSection(
                 value=persona["Importe"], 
-                title=f"{persona['Persona']}\n{persona['Importe']:.2f} €", 
-                color=colores_dict[persona['Persona']], 
+                title=f"{persona['Persona']}\n{persona['Importe']:.2f} €\n{persona['Concepto']}",
                 title_style=ft.TextStyle(color=ft.colors.WHITE),
+                # Ajustar la posición del título basado en el valor relativo del importe
+                title_position=max(0.4, 1 - (persona["Importe"] / max_importe) * 0.95),
+                color=colores_dict[persona['Persona']], 
                 radius=160
                 ) for persona in personas_pago
             ]
@@ -158,6 +160,7 @@ def main(page: ft.Page):
             ) for ajuste in ajustes])
 
         return ajustes_list
+
 
     # Botón para ajustar cuentas y crear gráficos
     def calculate_balances(e: ft.ControlEvent) -> None:
@@ -206,6 +209,7 @@ def main(page: ft.Page):
         else:
             show_snack_bar("No hay gastos para ajustar.", "red")
 
+
     # Guardar barbacoa
     def save_current_barbacoa(e):
         # Validamos que hayan puesto un nombre de barbacoa
@@ -216,7 +220,7 @@ def main(page: ft.Page):
         # Armamos el objeto dict para enviar a db
         barbacoa = {
             "fecha": datetime.now().strftime("%d-%m-%Y"),
-            "nombre": barbacoa_field.value,
+            "nombre": str(barbacoa_field.value).strip(),
             "ajustes": page.session.ajustes,
             "gastos": page.session.expenses.to_dict(orient="records"),
             "gasto_total": page.session.gasto_total,
@@ -232,6 +236,7 @@ def main(page: ft.Page):
         else:
             msg = response.json().get("detail", "Error guardando la barbacoa.")
             show_snack_bar(msg, "red")
+
 
 # Popup confirmación para borrar bbq
     def confirm_delete(barbacoa_name):
@@ -262,6 +267,7 @@ def main(page: ft.Page):
         dialog.open = True
         page.update()
 
+
     # Mostrar ventana con detalles de la barbacoa
     def display_barbacoa_details(barbacoa: dict[str, Any]):
         def close_dialog(e):
@@ -270,12 +276,16 @@ def main(page: ft.Page):
         
         ic("BARBACOA A MOSTRAR")
         ic(barbacoa)
+        participantes: list[str] = sorted(barbacoa.get("participantes", []))
         dialog = ft.AlertDialog(
             title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'", text_align=ft.TextAlign.CENTER),
             content=ft.Column([
-                ft.Text("Participantes", size=Sizes.XXLARGE, weight=ft.FontWeight.BOLD),
-                # TODO Añadir participantes y número
-                #ft.Text(f"{', '.join(barbacoa['participantes'])}"),
+                ft.Row(
+                    [ft.Text("Participantes", size=Sizes.XXLARGE, weight=ft.FontWeight.BOLD), ft.Text(":"), ft.Text(f"{len(participantes)}", weight=ft.FontWeight.BOLD),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER),
+                ft.Text(f"{', '.join(participantes)}.", text_align=ft.TextAlign.CENTER),
+                ft.Divider(),
                 ft.Column(
                     [
                         ft.Text(f"Gasto total: {barbacoa['gasto_total']:.2f} €"),
@@ -288,7 +298,8 @@ def main(page: ft.Page):
                 create_pie_chart(barbacoa['gastos'], page.session.colores),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER, width=400,
-            spacing=20
+            spacing=20,
+            scroll=ft.ScrollMode.AUTO
             ),
 
             actions=[
@@ -300,6 +311,7 @@ def main(page: ft.Page):
         page.overlay.append(dialog)
         dialog.open = True
         page.update()
+
 
     # Mostrar todas las barbacoas guardadas
     def display_saved_barbacoas():
@@ -319,13 +331,15 @@ def main(page: ft.Page):
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 border_radius=ft.border_radius.all(10),
                 padding=ft.padding.all(10),
-                bgcolor=ft.colors.GREY_100,
+                #bgcolor=ft.colors.GREY_50,
                 border=ft.border.all(1, ft.colors.GREY_300),
-                on_click=lambda e, barbacoa=barbacoa: display_barbacoa_details(barbacoa)
+                on_click=lambda e, barbacoa=barbacoa: display_barbacoa_details(barbacoa),
+                ink=True
             )
             list_view.controls.append(barbacoa_item)
         
         listview_bbq_container.content = list_view
+
 
     # Componentes de la página
     # Título principal
@@ -483,13 +497,12 @@ def main(page: ft.Page):
     )
     layout = ft.Column(
         [
-            titulo_ppal_container,
-            input_container,
-            expenses_table_container,
-            ajustes_container,
+            ft.Column([titulo_ppal_container, input_container], horizontal_alignment="center"),
+            ft.Column([ft.Text("Gastos", size=25, weight="bold"), expenses_table_container], horizontal_alignment="center"),
+            ft.Column([ft.Text("Ajustes", size=25, weight="bold"), ajustes_container], horizontal_alignment="center"),
             saved_bbq_container
         ],
-        spacing=30,
+        spacing=50,
         horizontal_alignment="center",
         )
     page.add(layout)
