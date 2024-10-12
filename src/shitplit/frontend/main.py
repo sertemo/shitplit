@@ -279,29 +279,30 @@ def main(page: ft.Page):
         participantes: list[str] = sorted(barbacoa.get("participantes", []))
         dialog = ft.AlertDialog(
             title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'", text_align=ft.TextAlign.CENTER),
-            content=ft.Column([
-                ft.Row(
-                    [ft.Text("Participantes", size=Sizes.XXLARGE, weight=ft.FontWeight.BOLD), ft.Text(":"), ft.Text(f"{len(participantes)}", weight=ft.FontWeight.BOLD),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER),
-                ft.Text(f"{', '.join(participantes)}.", text_align=ft.TextAlign.CENTER),
-                ft.Divider(),
-                ft.Column(
-                    [
-                        ft.Text(f"Gasto total: {barbacoa['gasto_total']:.2f} €"),
-                        ft.Text(f"Gasto medio: {barbacoa['gasto_medio']:.2f} €"),   
-                    ]
-                ),                
-                ft.Divider(),
-                create_ajustes(barbacoa['ajustes'], page.session.colores),
-                ft.Divider(),
-                create_pie_chart(barbacoa['gastos'], page.session.colores),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER, width=400,
-            spacing=20,
-            scroll=ft.ScrollMode.AUTO
-            ),
-
+            content=ft.Container(
+                    content=ft.Column([
+                    ft.Row(
+                        [ft.Text("Participantes", size=Sizes.XXLARGE, weight=ft.FontWeight.BOLD), ft.Text(":"), ft.Text(f"{len(participantes)}", weight=ft.FontWeight.BOLD),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER),
+                    ft.Text(f"{', '.join(participantes)}.", text_align=ft.TextAlign.CENTER),
+                    ft.Divider(),
+                    ft.Column(
+                        [
+                            ft.Text(f"Gasto total: {barbacoa['gasto_total']:.2f} €"),
+                            ft.Text(f"Gasto medio: {barbacoa['gasto_medio']:.2f} €"),   
+                        ]
+                    ),                
+                    ft.Divider(),
+                    create_ajustes(barbacoa['ajustes'], page.session.colores),
+                    ft.Divider(),
+                    create_pie_chart(barbacoa['gastos'], page.session.colores),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER, width=400,
+                spacing=20,
+                scroll=ft.ScrollMode.AUTO
+                ), 
+                padding=ft.padding.all(5)),
             actions=[
                 ft.TextButton("Cerrar", on_click=close_dialog, icon=ft.icons.CLOSE, icon_color=ft.colors.RED_700),
                 ],
@@ -364,16 +365,13 @@ def main(page: ft.Page):
         content_padding=ft.padding.symmetric(5, 8),
         text_size=Sizes.XLARGE,
         )
-    date_field = ft.DatePicker(  # TODO
-        value="Fecha",
-        current_date=datetime.now(),
-        )
 
     # Input de la persona
     persona_field = ft.Dropdown(
         label="Persona",
         options=[ft.dropdown.Option(persona) for persona in page.session.remaining_personas],
-        width=200,
+        #width=200,
+        expand=True,
         border_radius=ft.border_radius.all(10),
         height=INPUT_HEIGHT,
         content_padding=ft.padding.symmetric(5, 8)
@@ -381,7 +379,8 @@ def main(page: ft.Page):
     # Concepto de la compra
     concepto_field = ft.TextField(
         label="Concepto de gasto", 
-        width=persona_field.width, 
+        #width=persona_field.width, 
+        expand=True,
         border_radius=10,
         height=INPUT_HEIGHT,
         content_padding=persona_field.content_padding
@@ -389,7 +388,8 @@ def main(page: ft.Page):
     # Importe
     importe_field = ft.TextField(
         label="Importe", 
-        width=persona_field.width, 
+        #width=persona_field.width, 
+        expand=True,
         border_radius=10, 
         height=INPUT_HEIGHT,
         content_padding=persona_field.content_padding
@@ -402,21 +402,65 @@ def main(page: ft.Page):
         #bgcolor=ft.colors.GREY_300
         )
 
+    # input_container__ = ft.Container(
+    #     ft.Column(
+    #         [
+    #             ft.Row([barbacoa_field], alignment=ft.MainAxisAlignment.CENTER),
+    #             ft.Row(
+    #                 [persona_field, concepto_field, importe_field, add_expense_button],
+    #                 alignment=ft.MainAxisAlignment.CENTER,
+    #                 scroll=ft.ScrollMode.AUTO
+    #             )
+    #         ],
+    #         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    #         spacing=30
+    #     ),
+    #     #bgcolor="green",
+    #     padding=10,
+    # )
     input_container = ft.Container(
         ft.Column(
             [
-                ft.Row([barbacoa_field], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Row(
-                    [persona_field, concepto_field, importe_field, add_expense_button],
+                    [barbacoa_field], 
                     alignment=ft.MainAxisAlignment.CENTER
+                ),
+                ft.ResponsiveRow(
+                    controls=[
+                        ft.Column(
+                            controls=[persona_field], 
+                            col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
+                            expand=True,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                        ),
+                        ft.Column(
+                            controls=[concepto_field], 
+                            col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
+                            expand=True,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                        ),
+                        ft.Column(
+                            controls=[importe_field], 
+                            col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
+                            expand=True,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                        ),
+                        ft.Column(
+                            controls=[add_expense_button], 
+                            col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
+                            expand=False,  # Los botones no necesitan expandirse,
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER
                 )
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=30
         ),
-        #bgcolor="green",
         padding=10,
     )
+
     # Tabla de gastos
     expenses_table = ft.DataTable(
         columns=[
