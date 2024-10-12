@@ -302,7 +302,8 @@ def main(page: ft.Page):
                 spacing=20,
                 scroll=ft.ScrollMode.AUTO
                 ), 
-                padding=ft.padding.all(5)),
+                #padding=ft.padding.all(5)
+                ),
             actions=[
                 ft.TextButton("Cerrar", on_click=close_dialog, icon=ft.icons.CLOSE, icon_color=ft.colors.RED_700),
                 ],
@@ -421,10 +422,12 @@ def main(page: ft.Page):
     input_container = ft.Container(
         ft.Column(
             [
-                ft.Row(
-                    [barbacoa_field], 
-                    alignment=ft.MainAxisAlignment.CENTER
-                ),
+                ft.Column(
+                            controls=[barbacoa_field], 
+                            col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
+                            expand=True,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                        ),
                 ft.ResponsiveRow(
                     controls=[
                         ft.Column(
