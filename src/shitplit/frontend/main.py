@@ -41,11 +41,24 @@ def main(page: ft.Page):
     page.theme = ft.Theme(font_family="Poppins")
     page.title = "Ajustar gastos de barbacoas"
     page.padding = 20
-    page.favicon = "assets/favicon.ico"
+    page.window.icon = "assets/favicon.ico"
     page.scroll = ft.ScrollMode.AUTO
     page.session.cuadrilla = get_cuadrilla()
     page.session.colores = {persona['nombre']: persona['color'] for  persona in page.session.cuadrilla}
     page.session.barbacoas = load_barbacoas()
+
+    # Variable para almacenar el ancho de la ventana
+    window_width = page.window.width
+
+    # Función para manejar el evento de redimensionamiento
+    def on_page_resize(e):
+        nonlocal window_width
+        window_width = page.window.width
+        ic(window_width)
+        page.update()  # Actualizar la página si es necesario
+
+    # Escuchar el evento de redimensionamiento
+    page.on_resized = on_page_resize
 
     listview_bbq_container = ft.Container(width=420)
 
@@ -115,10 +128,17 @@ def main(page: ft.Page):
 
 
     # Funcion para crear el grafico de tarta
-    def create_pie_chart(gastos: list[dict[str, Any]], colores_dict: dict[str, str]) -> ft.PieChart:
+    def create_pie_chart(gastos: list[dict[str, Any]], colores_dict: dict[str, str], page_width: int) -> ft.PieChart:
         """
         Crea una gráfica de tarta con los gastos de una barbacoa.
+        Ajusta el tamaño en función del ancho de la pantalla.
         """
+        # Definir un tamaño dinámico según el tamaño de la pantalla
+        chart_size = min(400, page_width - 40)  # Ajustar el tamaño del gráfico, restando un margen
+        radius_size = chart_size // 2  # Ajustar el radio del gráfico en función del tamaño
+
+        ic(chart_size, radius_size)
+
         # Filtramos gastos con personas que tengan un importe mayor que cero
         personas_pago = [gasto for gasto in gastos if gasto["Importe"] > 0]
 
@@ -136,14 +156,15 @@ def main(page: ft.Page):
                 radius=160
                 ) for persona in personas_pago
             ]
+
         gastos_chart = ft.PieChart(
             sections=gastos_chart_data, 
-            # width=400, 
-            # height=400, 
+            #width=160,   # Tamaño dinámico del gráfico
+            #height=160,  # Tamaño dinámico del gráfico
             center_space_radius=0,
             #expand=True
             )
-        
+
         return gastos_chart
 
 
@@ -277,6 +298,11 @@ def main(page: ft.Page):
         ic("BARBACOA A MOSTRAR")
         ic(barbacoa)
         participantes: list[str] = sorted(barbacoa.get("participantes", []))
+
+        # Obtenemos el ancho de la pantalla
+        page_width = page.window.width
+        ic(page_width)
+
         dialog = ft.AlertDialog(
             title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'", text_align=ft.TextAlign.CENTER),
             content=ft.Container(
@@ -296,11 +322,12 @@ def main(page: ft.Page):
                     ft.Divider(),
                     create_ajustes(barbacoa['ajustes'], page.session.colores),
                     ft.Divider(),
-                    create_pie_chart(barbacoa['gastos'], page.session.colores),
+                    create_pie_chart(barbacoa['gastos'], page.session.colores, window_width),
+                    ft.Text(" ")
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER, 
-                #width=400,
-                spacing=20,
+                #width=window_width,
+                spacing=15,
                 scroll=ft.ScrollMode.AUTO
                 ), 
                 #padding=ft.padding.all(5)
@@ -362,7 +389,7 @@ def main(page: ft.Page):
     barbacoa_field = ft.TextField(
         label="Nombre de la barbacoa", 
         #width=400, 
-        #expand=True,
+        expand=True,
         border_radius=10,
         height=INPUT_HEIGHT,
         content_padding=ft.padding.symmetric(5, 8),
