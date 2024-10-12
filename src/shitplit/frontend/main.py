@@ -298,7 +298,8 @@ def main(page: ft.Page):
                     ft.Divider(),
                     create_pie_chart(barbacoa['gastos'], page.session.colores),
                 ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER, width=400,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER, 
+                #width=400,
                 spacing=20,
                 scroll=ft.ScrollMode.AUTO
                 ), 
@@ -360,7 +361,8 @@ def main(page: ft.Page):
     # Nombre de la barbacoa
     barbacoa_field = ft.TextField(
         label="Nombre de la barbacoa", 
-        width=400, 
+        #width=400, 
+        #expand=True,
         border_radius=10,
         height=INPUT_HEIGHT,
         content_padding=ft.padding.symmetric(5, 8),
@@ -422,12 +424,17 @@ def main(page: ft.Page):
     input_container = ft.Container(
         ft.Column(
             [
-                ft.Column(
-                            controls=[barbacoa_field], 
-                            col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
-                            expand=True,
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-                        ),
+                ft.ResponsiveRow(
+                    controls=[
+                    ft.Column(
+                                controls=[barbacoa_field], 
+                                col={"xs": 12, "sm": 6, "md": 3},  # Se ajusta según el tamaño de la pantalla
+                                expand=True,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                            )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER              
+                ),
                 ft.ResponsiveRow(
                     controls=[
                         ft.Column(
