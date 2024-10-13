@@ -128,7 +128,7 @@ def main(page: ft.Page):
 
 
     # Funcion para crear el grafico de tarta
-    def create_pie_chart(gastos: list[dict[str, Any]], colores_dict: dict[str, str], page_width: int) -> ft.PieChart:
+    def create_pie_chart(gastos: list[dict[str, Any]], colores_dict: dict[str, str], page_width: int = 100) -> ft.PieChart:
         """
         Crea una gráfica de tarta con los gastos de una barbacoa.
         Ajusta el tamaño en función del ancho de la pantalla.
