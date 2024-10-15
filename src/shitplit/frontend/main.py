@@ -132,15 +132,41 @@ def main(page: ft.Page):
         Crea una gráfica de tarta con los gastos de una barbacoa.
         Ajusta el tamaño en función del ancho de la pantalla.
         """
+        def calculate_radius_size(factor: float) -> int:
+            """
+            Calcula el radio en funcion de un factor
+            """
+            if factor < 1:
+                radius_size = 130
+            elif factor >=1 and factor < 2:
+                radius_size = 140
+            elif factor >= 2 and factor < 3:
+                radius_size = 150
+            elif factor >= 3:
+                radius_size = 160
+            ic(radius_size)
+            return radius_size
+
         # Definir un tamaño dinámico según el tamaño de la pantalla
         chart_size = min(400, page_width - 40)  # Ajustar el tamaño del gráfico, restando un margen
         radius_size = chart_size // 2  # Ajustar el radio del gráfico en función del tamaño
 
+        num_total_personas = len(gastos)
+        ic(num_total_personas)
+
         # Filtramos gastos con personas que tengan un importe mayor que cero
         personas_pago = [gasto for gasto in gastos if gasto["Importe"] > 0]
+        num_personas_gastos: int = len(personas_pago)
+
+        # Si no hay personas totales o es 0, usar una cantidad mínima para evitar la división por 0
+        num_total_personas = max(1, num_total_personas)
 
         # Encontrar el valor máximo para calcular la posición dinámica
         max_importe = max(gasto["Importe"] for gasto in personas_pago) if personas_pago else 1
+
+        # Calcular el radio basado en la cantidad de pagadores y el total de personas
+        factor = (num_personas_gastos * num_total_personas) / (num_total_personas + num_personas_gastos)
+        radius_size = calculate_radius_size(factor)        
 
         gastos_chart_data = [
             ft.PieChartSection(
@@ -150,7 +176,7 @@ def main(page: ft.Page):
                 # Ajustar la posición del título basado en el valor relativo del importe
                 title_position=max(0.4, 1 - (persona["Importe"] / max_importe) * 0.95),
                 color=colores_dict[persona['Persona']], 
-                radius=140
+                radius=radius_size
                 ) for persona in personas_pago
             ]
 
@@ -199,7 +225,6 @@ def main(page: ft.Page):
             response = requests.post(f"{settings.BACKEND_URL}/calcular_ajustes", json=gastos)
             if response.status_code == 200:
                 ajustes: dict[str, Any] = response.json()["ajustes"]
-                ic(ajustes)
                 # Guardamos en sesión los ajustes
                 page.session.ajustes = ajustes
 
@@ -295,7 +320,6 @@ def main(page: ft.Page):
 
         # Obtenemos el ancho de la pantalla
         page_width = page.window.width
-        ic(page_width)
 
         dialog = ft.AlertDialog(
             title=ft.Text(f"Barbacoa '{barbacoa.get('nombre', 'Barbacoa sin nombre')}'", text_align=ft.TextAlign.CENTER),
@@ -324,7 +348,7 @@ def main(page: ft.Page):
                 spacing=15,
                 scroll=ft.ScrollMode.AUTO
                 ), 
-                padding=ft.padding.only(left=10, right=10),
+                padding=ft.padding.only(left=0, right=0, top=10, bottom=5),
                 ),
             actions=[
                 ft.TextButton("Cerrar", on_click=close_dialog, icon=ft.icons.CLOSE, icon_color=ft.colors.RED_700),
