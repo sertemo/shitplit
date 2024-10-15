@@ -48,7 +48,6 @@ async def get_cuadrilla():
 @app.post(settings.CALCULAR_AJUSTES_ENDPOINT)
 async def calcular_ajustes(gastos: list[Gasto]):
     df = pd.DataFrame([g.model_dump() for g in gastos])
-    ic(df)
     total_gasto = df["Importe"].sum()
     personas = df["Persona"].unique()
     gasto_medio = total_gasto / len(personas) if len(personas) > 0 else 0
@@ -148,8 +147,6 @@ async def calcular_ajustes_old(gastos: list[Gasto]):
 async def guardar_barbacoa(barbacoa: BarbacoaMongo):
     # Convertir el modelo en un diccionario
     barbacoa_dict = barbacoa.model_dump()
-    ic("METEMOS EN DB")
-    ic(barbacoa_dict)
     
     try:
         # Comprobar si ya existe una barbacoa con el mismo nombre
@@ -167,7 +164,6 @@ async def guardar_barbacoa(barbacoa: BarbacoaMongo):
 @app.get(settings.OBTENER_BARBACOAS_GUARDADAS_ENDPOINT)
 async def get_barbacoas():
     barbacoas = list(collection.find({}, {"_id": 0}))
-    ic(barbacoas)
     return barbacoas
 
 

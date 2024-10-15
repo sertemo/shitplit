@@ -54,7 +54,6 @@ def main(page: ft.Page):
     def on_page_resize(e):
         nonlocal window_width
         window_width = page.window.width
-        ic(window_width)
         page.update()  # Actualizar la página si es necesario
 
     # Escuchar el evento de redimensionamiento
@@ -137,8 +136,6 @@ def main(page: ft.Page):
         chart_size = min(400, page_width - 40)  # Ajustar el tamaño del gráfico, restando un margen
         radius_size = chart_size // 2  # Ajustar el radio del gráfico en función del tamaño
 
-        ic(chart_size, radius_size)
-
         # Filtramos gastos con personas que tengan un importe mayor que cero
         personas_pago = [gasto for gasto in gastos if gasto["Importe"] > 0]
 
@@ -153,7 +150,7 @@ def main(page: ft.Page):
                 # Ajustar la posición del título basado en el valor relativo del importe
                 title_position=max(0.4, 1 - (persona["Importe"] / max_importe) * 0.95),
                 color=colores_dict[persona['Persona']], 
-                radius=160
+                radius=140
                 ) for persona in personas_pago
             ]
 
@@ -186,7 +183,6 @@ def main(page: ft.Page):
     # Botón para ajustar cuentas y crear gráficos
     def calculate_balances(e: ft.ControlEvent) -> None:
         # Generamos el dict para enviar al backend
-        ic(page.session.expenses.Persona.tolist())
         gastos = [
             {"Persona": row["Persona"], "Concepto": row["Concepto"], "Importe": row["Importe"]} 
             for index, row in page.session.expenses.iterrows()
@@ -294,9 +290,7 @@ def main(page: ft.Page):
         def close_dialog(e):
             dialog.open = False
             page.update()
-        
-        ic("BARBACOA A MOSTRAR")
-        ic(barbacoa)
+
         participantes: list[str] = sorted(barbacoa.get("participantes", []))
 
         # Obtenemos el ancho de la pantalla
@@ -330,7 +324,7 @@ def main(page: ft.Page):
                 spacing=15,
                 scroll=ft.ScrollMode.AUTO
                 ), 
-                #padding=ft.padding.all(5)
+                padding=ft.padding.only(left=10, right=10),
                 ),
             actions=[
                 ft.TextButton("Cerrar", on_click=close_dialog, icon=ft.icons.CLOSE, icon_color=ft.colors.RED_700),
@@ -349,7 +343,6 @@ def main(page: ft.Page):
         list_view = ft.ListView(expand=True, spacing=10)
 
         for idx, barbacoa in enumerate(barbacoas, 1):
-            ic(barbacoa)
             barbacoa_item = ft.Container(ft.Row([
                 ft.Row([ft.Text(f"{idx}"), ft.Text(barbacoa.get('nombre', 'Barbacoa sin nombre'), weight=ft.FontWeight.BOLD), ft.Text('-'),ft.Text(barbacoa['fecha'])]),
                 ft.IconButton(
