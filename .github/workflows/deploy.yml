@@ -1,4 +1,4 @@
-name: DockerHub
+name: Deploy to DockerHub and GCP
 
 on:
   push:
@@ -35,4 +35,23 @@ jobs:
         tags: sertemo/shitplit:latest
         cache-from: type=registry,ref=sertemo/shitplit:cache
         cache-to: type=registry,ref=sertemo/shitplit:cache,mode=max
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }} # Aquí puedes tener tu ID de proyecto de GCP como un secreto.
+        service_account_key: ${{ secrets.GCP_SA_KEY }} # Añade la clave del Service Account como un secreto en GitHub.
+        export_default_credentials: true
+
+    - name: Deploy to Google Cloud Run
+      run: |
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+        gcloud run deploy shitplit \
+          --image=docker.io/sertemo/shitplit:latest \
+          --platform=managed \
+          --region=YOUR_REGION \
+          --allow-unauthenticated \
+          --port=60751 \
+          --set-env-vars=DB_MONGO=${{ secrets.DB_MONGO }} \
+          --max-instances=5
 

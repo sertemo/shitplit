@@ -86,7 +86,7 @@ def main(page: ft.Page):
         persona = persona_field.value
         concepto = concepto_field.value
         try:
-            importe = float(importe_field.value) if importe_field.value else 0.0
+            importe = float(importe_field.value.replace(",", ".")) if importe_field.value else 0.0
         except ValueError:
             show_snack_bar("Importe debe ser un número válido.", "red")
             return
