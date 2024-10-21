@@ -43,7 +43,7 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }} # Aquí puedes tener tu ID de proyecto de GCP como un secreto.
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
         install_components: 'beta'
 
     - name: Deploy to Google Cloud Run
@@ -52,7 +52,7 @@ jobs:
         gcloud run deploy shitplit \
           --image=docker.io/sertemo/shitplit:latest \
           --platform=managed \
-          --region=YOUR_REGION \
+          --region=europe-west1 \
           --allow-unauthenticated \
           --port=60751 \
           --set-env-vars=DB_MONGO=${{ secrets.DB_MONGO }} \
