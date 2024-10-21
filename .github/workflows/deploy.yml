@@ -55,6 +55,5 @@ jobs:
           --region=europe-west1 \
           --allow-unauthenticated \
           --port=60751 \
-          --set-env-vars=DB_MONGO=${{ secrets.DB_MONGO }} \
-          --max-instances=5
+          --max-instances=5 \
 
