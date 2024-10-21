@@ -53,7 +53,7 @@ jobs:
           --image=docker.io/sertemo/shitplit:latest \
           --platform=managed \
           --region=europe-west1 \
-          --allow-unauthenticated \
           --port=60751 \
+          --allow-unauthenticated \
           --max-instances=5 \
 
